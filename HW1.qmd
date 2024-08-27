@@ -1,0 +1,182 @@
+---
+title: "BIOS 736: HMWK 1"
+author: "Thomas Hsiao"
+format: pdf
+editor: visual
+---
+
+## Question 1
+
+Let $Y$ be the response vector, $W$ the observed covariate matrix, and $X$ the true covariate matrix. The two definitions of non-differential measurement error (ME) are
+
+1.  $Y$ and $W$ are conditionally independent given $X$. $f(Y|X,W)=f(Y|X)$.
+2.  $f(W|X,Y)=f(W|X)$
+
+Then 1 implies 2 because
+
+$$
+f(W|Y,X)=\frac{f(Y,X,W)}{f(Y,X)}=\frac{f(Y|X,W)f(X,W)}{f(Y|X)f(X)}=\frac{f(Y|X)f(X,W)}{f(Y|X)f(X)}=f(W|X)
+$$
+
+## Question 2
+
+We repeat the simulation study from Lecture 1 pg. 8 and pg. 10 using $n=1000$ and setting the true value of $\beta=0$.
+
+```{r, echo = FALSE}
+alpha <- -1
+beta  <- 0
+sigsq <- 0.25
+sigsqx <- 0.5
+sigsqu <- 0.5
+
+B <- 1000
+
+X <- sqrt(sigsqx) * rnorm(B)
+U <- sqrt(sigsqu) * rnorm(B)
+W <- X + U
+
+Y <- alpha + beta*X + sqrt(sigsq)*rnorm(B)
+df <- data.frame(Y=rep(Y, times=2), cov=c(X,W),type=rep(c("X","W"), each=B))
+
+
+fit_true <- lm(Y ~ X)
+fit_naive <- lm(Y ~ W)
+
+fit_true$name <- "true"
+fit_naive$name <- "naive"
+
+# Create a list of models
+model_list <- list(fit_true, fit_naive)
+
+# Initialize an empty list to store the tidy summaries
+tidy_summaries <- list()
+
+# Loop through the models and tidy the summary output
+for (model in model_list) {
+  tidy_summary <- broom::tidy(model)
+  tidy_summary$model <- model$name
+  tidy_summaries[[length(tidy_summaries) + 1]] <- tidy_summary
+}
+options(digits = 4)
+knitr::kable(tidy_summaries, caption = "Simulation 1: Non-differential ME")
+```
+
+For the first simulation, since the $Y$ vector is no longer dependent on the $X$ vector, the non-differential measurement error does not bias the $\beta$ anymore and both models estimate an effect of around 0. The standard error is higher due to $W$ being noisier than $X$, but the test result for $\beta=0$ is still valid.
+
+```{r, echo=FALSE, warning=FALSE}
+library(ggplot2)
+
+ggplot(df, aes(cov, Y)) + 
+  geom_point(aes(col=type), alpha = 0.5) + 
+  geom_smooth(aes(col = type, linetype = type), method="lm") + 
+  ggtitle("Non-differential ME simulation")
+```
+
+```{r, echo=FALSE}
+alpha <- -1
+beta  <- 0
+sigsq <- 1.05
+sigsqx <- 0.3
+sigsqu <- 1.05
+
+B <- 1000
+
+X <- sqrt(sigsqx) * rnorm(B)
+U <- sqrt(sigsqu) * rnorm(B)
+Y <- alpha + beta*X + sqrt(sigsq)*rnorm(B)
+W <- X + U + 2*Y
+
+df <- data.frame(Y=rep(Y, times=2), cov=c(X,W),type=rep(c("X","W"), each=B))
+
+
+fit_true <- lm(Y ~ X)
+fit_naive <- lm(Y ~ W)
+
+fit_true$name <- "true"
+fit_naive$name <- "naive"
+
+# Create a list of models
+model_list <- list(fit_true, fit_naive)
+
+# Initialize an empty list to store the tidy summaries
+tidy_summaries <- list()
+
+# Loop through the models and tidy the summary output
+for (model in model_list) {
+  tidy_summary <- broom::tidy(model)
+  tidy_summary$model <- model$name
+  tidy_summaries[[length(tidy_summaries) + 1]] <- tidy_summary
+}
+options(digits = 4)
+knitr::kable(tidy_summaries, caption = "Simulation 2: Special case of Differential ME")
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+library(ggplot2)
+
+ggplot(df, aes(cov, Y)) + 
+  geom_point(aes(col=type), alpha = 0.5) + 
+  geom_smooth(aes(col = type, linetype = type), method="lm") + 
+  ggtitle("Special case of Differential ME simulation")
+```
+
+For the second simulation, the $\beta$ is biased and results in an invalid hypothesis test for $\beta=0$.
+
+## Question 3
+
+In the original paper, Morrissey and Spiegelman (1999) compare several methods for exposure misclassification methods in case control studies with an internal validation dataset. The methods include the inverse matrix and matrix methods for 2 x 2 analyses, as well as maximum likelihood through a numerical procedure. The main tension to solving the ME problem was that while the MLE appears to be more efficient compared to the other methods, it is difficult to implement due to requiring numerical procedures that were not widely available to applied epidemiologists, the chief audience, at the time. The authors concluded MLE was the most efficient and recommended it to be seriously considered despite its practical issues. However, in the reader's response Lyles revealed through a clever reparametrization that the MLE and inverse matrix methods are equivalent under the assumption of differential misclassification. In other words - a closed form estimator of the MLE exists under the guise of a previous method. This result opened the door for epidemiologists to conduct inference under differential ME with full confidence in the efficiency of a fast estimator, without requiring complicated numerical routines.
+
+## Question 4
+
+### Part A
+
+The naive OR is
+
+$$
+OR_{naive}=\frac{n_{11}n_{02}}{n_{12}n_{01}}=\frac{50*87}{104*55}=0.7605
+$$
+
+95% CI is (0.4719, 1.226)
+
+$$
+L=\exp\left\{\log(OR)-1.96*\sqrt{n_{11}^{-1}+n_{12}^{-1}+n_{01}^{-1}+n_{02}^{-1}}\right\}
+$$
+
+$$
+U=\exp\left\{\log(OR)+1.96*\sqrt{n_{11}^{-1}+n_{12}^{-1}+n_{01}^{-1}+n_{02}^{-1}}\right\}
+$$
+
+```{r}
+n11 <- 50
+n02 <- 87
+n12 <- 104
+n01 <- 55
+
+n13 <- 14
+n14 <- 14
+n15 <- 10
+n16 <- 58
+n03 <- 29
+n04 <- 3
+n05 <- 8
+n06 <- 68
+
+OR <- n11*n02 / (n12 * n01)
+SE <- sqrt(1/n11 + 1/n02 + 1/n12 + 1/n01)
+CI <- exp(log(OR) + 1.96*c(-SE, SE))
+```
+
+### Part B
+
+```{r}
+SE1 <- n13 / (n13+n15)
+SE0 <- n03 / (n03+n05)
+
+SP1 <- n16 / (n16 + n14)
+SP0 <- n06 / (n06 + n04)
+```
+
+SE is sensitivity and SP is specificity. Since we are asked to verify whether the measurement error is non-differential, we can compute the four parameters in the internal validation dataset.
+
+The two sensitivities are 0.583 for $D=1$ and 0.784 for $D=0$. The two specificities are 0.806 for $D=1$ and 0.958 for $D=0$. Since the sensitivities and specificities differ as a function of the response, the measurement error is most likely differential.

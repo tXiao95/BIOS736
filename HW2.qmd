@@ -1,0 +1,56 @@
+---
+title: "BIOS 736: HW2"
+author: Thomas Hsiao
+format: pdf
+editor: visual
+---
+
+## Problem 1
+
+```{r, echo = FALSE}
+library(data.table)
+namesA <- c("Obs", "i", "y", "w")
+namesB <- c("Obs", "i", "w", "x")
+datA <- fread("~/BIOS736/hw2q1datA.sas", col.names = namesA)
+datB <- fread("~/BIOS736/hw2q1datB.sas", col.names = namesB)
+
+# Regression (Naive)
+fitNaive <- lm(y~w, data = datA)
+betahat_star <- fitNaive$coefficients[2]
+betahat_star.var <- 0.09267^2
+knitr::kable(broom::tidy(fitNaive), digits = 3, caption = "Naive model fit on main study data")
+
+CI <- 1.5554 + 1.96*c(-0.09267, 0.09267)
+```
+
+The slope parameter in the naive regression is estimated to be 1.56 (95% CI: 1.37, 1.74) with a SE of 0.0927.
+
+This is subjected to measurement error in the covariate $W$. We can implement a correction using the provided external validation data. The correction is as follows.
+
+$$
+\hat{\beta}=\frac{\hat{\beta}^*}{\hat{\lambda}}, \hat{\text{Var}}\{\hat{\beta}\}=\frac{\hat{\text{Var}}\{\hat{\beta}^*\}+\hat{\beta}^2\hat{\text{Var}}(\hat{\lambda})/\hat{\lambda}^2}{\hat{\lambda}^2}
+$$
+
+```{r, echo = FALSE}
+fitMEM <- lm(x~w, data = datB)
+knitr::kable(broom::tidy(fitMEM), digits = 3, caption = "MEM fit on validation study data")
+
+lambdahat <- fitMEM$coefficients[2]
+lambdahat.var <- 0.04466^2
+
+betahat <- betahat_star / lambdahat
+betahat.var <- (betahat_star.var + betahat^2*lambdahat.var/lambdahat^2) / lambdahat^2
+betahat.se <- sqrt(betahat.var)
+```
+
+The corrected slope estimate is 0.517 (95% CI: -0.268, 1.30) with a SE of 0.401.
+
+As is usually the case, the slope estimate for the surrogate results is attenuated - and the standard error underestimated. Once corrected, we get a much lower slope estimate with much more uncertainty - so much so that the CI crosses 0. This is a clear indication that measurement error can have a substantial impact on the results of any analysis, and the conclusions drawn can change drastically once accounted for.
+
+## Problem 2
+
+See attached handwritten section.
+
+## Problem 3
+
+The main contribution of Tang et al. (2015) is the extension of misclassification methods under relaxed assumptions to models with a binary response, a key binary exposure variable, and covariates influencing the measurement error using maximum likelihood (ML) and an internal validation design. The motivation stems from the HIV Epidemiology Research Study (HERS), where the main research question of interest is quantifying the association between bacterial vaginosis (BV) and Trichomoniasis (Trich). Non-differential error and simple differential error mechanisms of the dataset in the exposure and response is deemed to be an untenable assumption due to the complex misclassification process of BV and Trich. By using an internal validation set, the authors show large differences in estimates of the target parameter (odds ratio) between gold standard data, and the error-prone data, demonstrating the need for measurement error methodology. Barron (1977) first introduced the "matrix method" as a way to handle misclassification error in the exposure variable in a 2x2 table, and also extended it to error in the outcome assuming independent and nondifferential error. This paper extends the original method to inclusion of covariates associating exposure and outcome, as well as relaxing the independent and nondifferential error assumption to other scenarios (independent and differential, dependent and differential) using likelihood methods.

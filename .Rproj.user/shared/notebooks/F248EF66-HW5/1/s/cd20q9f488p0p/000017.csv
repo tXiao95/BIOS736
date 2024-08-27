@@ -1,0 +1,7 @@
+"0","ggplot(final[N==200], aes(METHOD, mean)) +"
+"0","  geom_point(alpha=0.6, size=3) + "
+"0","  geom_errorbar(aes(ymin=lower, ymax=upper), alpha=0.6, size=0.5) + "
+"0","  facet_grid( XDIST ~ parameter, scales = ""free"") + "
+"0","  geom_hline(aes(yintercept=truth), linetype = ""dashed"", col=""red"") + "
+"0","  theme_bw() + "
+"0","   ggtitle(""Simulation Results for N=200"")"
